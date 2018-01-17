@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:context="http://www.springframework.org/schema/context" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+    <http:listener-config name="banking-api-httpListenerConfig" host="${http.host}" port="${http.port}" doc:name="HTTP Listener Configuration"/>
+    <apikit:config name="banking-api-config" raml="banking-api.raml" consoleEnabled="false" doc:name="Router"/>
+    <context:property-placeholder location="commons.properties,${mule.env}.properties"/>
+    <db:mysql-config name="MySQL_Configuration" host="${mysql.host}" port="${mysql.port}" user="${mysql.user}" password="${mysql.password}" database="${mysql.database}" doc:name="MySQL Configuration"/>
+    <flow name="banking-api-main">
+        <http:listener config-ref="banking-api-httpListenerConfig" path="/api/*" doc:name="HTTP"/>
+        <apikit:router config-ref="banking-api-config" doc:name="APIkit Router"/>
+        <exception-strategy ref="banking-api-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy"/>
+    </flow>
+    <flow name="banking-api-console">
+        <http:listener config-ref="banking-api-httpListenerConfig" path="/console/*" doc:name="HTTP"/>
+        <apikit:console config-ref="banking-api-config" doc:name="APIkit Console"/>
+    </flow>
+    <flow name="put:/accounts/{id}:application/json:banking-api-config">
+        <db:update config-ref="MySQL_Configuration" doc:name="Update Account">
+            <db:parameterized-query><![CDATA[UPDATE accounts SET cpf=#[json:/cpf] WHERE id=#[flowVars.id]]]></db:parameterized-query>
+        </db:update>
+        <validation:is-true message="404" exceptionClass="org.mule.module.apikit.exception.NotFoundException"  doc:name="Does the account exist?" expression="#[payload != false]"/>
+        <set-payload value="{  &quot;updatedAt&quot;: #[server.dateTime.format('yyyy')] }" doc:name="Set Payload"/>
+    </flow>
+    <flow name="delete:/accounts/{id}:banking-api-config">
+        <db:delete config-ref="MySQL_Configuration" doc:name="Remove Account ">
+            <db:parameterized-query><![CDATA[DELETE FROM accounts WHERE id=#[flowVars.id]]]></db:parameterized-query>
+        </db:delete>
+        <validation:is-true message="404" exceptionClass="org.mule.module.apikit.exception.NotFoundException" expression="#[payload != false]" doc:name="Validation"/>
+    </flow>
+    <flow name="get:/accounts:banking-api-config">
+        <db:select config-ref="MySQL_Configuration" doc:name="Select All Accounts">
+            <db:parameterized-query><![CDATA[SELECT * FROM accounts]]></db:parameterized-query>
+        </db:select>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <set-payload value="{
+  &quot;accounts&quot;: #[payload]
+}" doc:name="Set Payload" encoding="UTF-8" mimeType="application/json"/>
+    </flow>
+    <flow name="get:/accounts/{id}/transfers:banking-api-config">
+        <db:select config-ref="MySQL_Configuration" doc:name="Select All tranfers of specific Account">
+            <db:parameterized-query><![CDATA[SELECT * FROM transfers WHERE senderId=#[flowVars.id]]]></db:parameterized-query>
+        </db:select>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <set-payload value="{
+  &quot;transfers&quot;: #[payload]
+}" doc:name="Set Payload" encoding="UTF-8" mimeType="application/json"/>
+    </flow>
+    <flow name="get:/accounts/{id}:banking-api-config">
+        <db:select config-ref="MySQL_Configuration" doc:name="Select Specific Account">
+            <db:parameterized-query><![CDATA[SELECT * FROM accounts WHERE id=#[flowVars.id]]]></db:parameterized-query>
+        </db:select>
+        <validation:validate-size message="404" exceptionClass="org.mule.module.apikit.exception.NotFoundException"  doc:name="Does the account exist?" min="1" value="#[payload]"/>
+        <set-payload value="#[payload.get(0)]" doc:name="Set Payload"/>
+    </flow>
+    <flow name="post:/accounts:application/json:banking-api-config">
+        <set-variable variableName="branchVar" value="#[json:/branch]" doc:name="branchVar"/>
+        <db:insert config-ref="MySQL_Configuration" autoGeneratedKeys="true" doc:name="Insert Account">
+            <db:parameterized-query><![CDATA[INSERT INTO accounts (accountNumber, balance, branch, cpf) VALUES (#[json:/accountNumber], #[json:/balance], #[json:/branch], #[json:/cpf])]]></db:parameterized-query>
+        </db:insert>
+        <set-property propertyName="Location" value="http://localhost:${http.port}/api/accounts/#[payload.get(0).get('GENERATED_KEY')]" doc:name="Set Location in Header"/>
+        <set-payload value="{  &quot;branch&quot;: #[flowVars.branchVar] }" doc:name="Set Payload"/>
+    </flow>
+    <apikit:mapping-exception-strategy name="banking-api-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: #[exception.getMessage()] }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: #[exception.getMessage()] }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: #[exception.getMessage()] }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: #[exception.getMessage()] }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException"/>
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: #[exception.getMessage()] }" doc:name="Set Payload"/>
+        </apikit:mapping>
+    </apikit:mapping-exception-strategy>
+</mule>

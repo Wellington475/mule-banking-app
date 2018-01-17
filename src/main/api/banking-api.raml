@@ -1,0 +1,87 @@
+#%RAML 1.0
+title: Banking API
+version: 1.0
+baseUri: https://mocksvc.mulesoft.com/mocks/80209cda-1d38-4fee-b451-2fef08c362c3/api/v1 # baseUri: /api/v1
+
+uses:
+  banking: types/banking-types.raml 
+
+documentation: 
+  - title: Home
+    content: !include documents/home.md
+  - title: Accounts
+    content: !include documents/accounts.md
+  - title: Transfers
+    content: !include documents/transfers.md
+
+mediaType: application/json
+
+resourceTypes:
+  collection:
+    get?:
+      description: Retrieve <<resourcePathName | !uppercamelcase>> collection
+      responses:
+        200:
+          body:
+            type: <<collectionType>>
+            example: <<collectionExample>>
+
+/accounts:
+  type: 
+    collection:
+      collectionType: banking.Accounts
+      collectionExample: !include examples/accounts-response.json
+  get:
+  post:
+    description: Creates Account object
+    body: 
+      application/json:
+        properties: 
+          branch: number
+          cpf: string
+        example: !include examples/account-post.json
+
+    responses: 
+      201:
+        headers: 
+          Location:
+            type: string
+            example: "872577-9"
+        body: 
+          application/json:
+            example: !include examples/account-post-response.json
+
+  /{id}:
+    get:
+      description: Retrieves Account object
+      responses:
+        200:
+          body:
+            application/json:
+              type: banking.Account
+              example: !include examples/account-response.json
+    put:
+      description: Updates Account information
+      body: 
+        application/json:
+          properties: 
+            cpf: string
+          example: !include examples/account-put-request.json
+      responses: 
+        200:
+          body: 
+            application/json:
+              example: !include examples/account-put-response.json
+
+    delete:
+      description: Removes account object
+      responses: 
+        204:
+    /transfers:
+      get:
+        description: Retrieve Transfers collection
+        responses: 
+          200:
+            body: 
+              application/json:
+                type: banking.Transfers

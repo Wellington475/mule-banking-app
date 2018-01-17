@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd">
+    <munit:config name="munit" doc:name="MUnit configuration" mock-connectors="false" mock-inbounds="false"/>
+    <spring:beans>
+        <spring:import resource="classpath:banking-api.xml"/>
+    </spring:beans>
+    <http:request-config name="HTTP_Request_Configuration" host="${http.host}" port="${http.port}" basePath="/api" doc:name="HTTP Request Configuration"/>
+    <sub-flow name="banking-test-suiteSub_Flow">
+        <scripting:component doc:name="Select Accounts Response">
+            <scripting:script engine="Groovy" name="select-accounts-response"><![CDATA[LinkedList<org.mule.util.CaseInsensitiveHashMap> list = new LinkedList();
+org.mule.util.CaseInsensitiveHashMap<String, Object> first = new org.mule.util.CaseInsensitiveHashMap();
+org.mule.util.CaseInsensitiveHashMap<String, Object> second = new org.mule.util.CaseInsensitiveHashMap();
+
+first.put("accountNumber", "123456-7");
+first.put("balance", 3000);
+first.put("branch", 123);
+first.put("cpf", "431123456-90");
+first.put("id", 1);
+
+second.put("accountNumber", "123456-7");
+second.put("balance", 3000);
+second.put("branch", 123);
+second.put("cpf", "431123456-90");
+second.put("id", 1);
+
+list.add(first);
+list.add(second);
+
+return list;]]></scripting:script>
+        </scripting:component>
+        <scripting:component doc:name="Select Account Response">
+            <scripting:script engine="Groovy" name="select-account-response"><![CDATA[LinkedList<org.mule.util.CaseInsensitiveHashMap> list = new LinkedList();
+org.mule.util.CaseInsensitiveHashMap<String, Object> first = new org.mule.util.CaseInsensitiveHashMap();
+
+first.put("accountNumber", "123456-7");
+first.put("balance", 3000);
+first.put("branch", 123);
+first.put("cpf", "431123456-90");
+first.put("id", 1);
+
+
+list.add(first);
+
+return list;]]></scripting:script>
+        </scripting:component>
+        <scripting:component doc:name="Insert Account Response">
+            <scripting:script engine="Groovy" name="insert-account-response"><![CDATA[LinkedList<org.mule.util.CaseInsensitiveHashMap> list = new LinkedList();
+org.mule.util.CaseInsensitiveHashMap<String, Object> first = new org.mule.util.CaseInsensitiveHashMap();
+
+first.put("branch", 1);
+
+list.add(first);
+return list;]]></scripting:script>
+        </scripting:component>
+        <scripting:component doc:name="Select Transfers Response">
+            <scripting:script engine="Groovy" name="select-transfers-response"><![CDATA[LinkedList<org.mule.util.CaseInsensitiveHashMap> list = new LinkedList();
+org.mule.util.CaseInsensitiveHashMap<String, Object> first = new org.mule.util.CaseInsensitiveHashMap();
+org.mule.util.CaseInsensitiveHashMap<String, Object> second = new org.mule.util.CaseInsensitiveHashMap();
+
+first.put("id", 1);
+first.put("senderId", 1);
+first.put("branchTo", 123);
+first.put("accountTo", "23857-9");
+first.put("ammount", 100.00);
+
+second.put("id", 2);
+second.put("senderId", 2);
+second.put("branchTo", 123);
+second.put("accountTo", "23857-9");
+second.put("ammount", 20.00);
+
+list.add(first);
+list.add(second);
+
+return list;]]></scripting:script>
+        </scripting:component>
+    </sub-flow>
+    <munit:test name="banking-test-suite-put:/accounts/{id}:application/json:banking-api-configTest" description="Test">
+        <mock:when messageProcessor=".*:.*" doc:name="Mock">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Update Account']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[1]"/>
+        </mock:when>
+        <set-payload value="{
+	&quot;cpf&quot;: &quot;123456789-42&quot;
+}" doc:name="Set Payload" />
+        <http:request config-ref="HTTP_Request_Configuration" path="/accounts/{id}" method="PUT" doc:name="HTTP">
+            <http:request-builder>
+                <http:uri-param paramName="id" value="1"/>
+                <http:header headerName="Content-Type" value="application/json"/>
+            </http:request-builder>
+        </http:request>
+        <munit:assert-true condition="#[messageInboundProperty('http.status').is(eq(200))]" doc:name="Assert HTTP Status Code" message="The HTTP Status Code is not correct"/>
+    </munit:test>
+    <munit:test name="banking-test-suite-delete:/accounts/{id}:banking-api-configTest" description="Test">
+        <mock:when messageProcessor=".*:.*" doc:name="Mock Delete Account">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Remove Account ']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[1]"/>
+        </mock:when>
+        <http:request config-ref="HTTP_Request_Configuration" path="/accounts/{id}" method="DELETE" doc:name="HTTP">
+            <http:request-builder>
+                <http:uri-param paramName="id" value="1"/>
+            </http:request-builder>
+        </http:request>
+        <munit:assert-true condition="#[messageInboundProperty('http.status').is(eq(204))]" doc:name="Assert True"/>
+    </munit:test>
+    <munit:test name="banking-test-suite-get:/accounts:banking-api-configTest" description="Test">
+        <mock:when doc:name="Mock Select All Accounts" messageProcessor=".*:.*">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Select All Accounts']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[resultOfScript('select-accounts-response')]"/>
+        </mock:when>
+        <http:request config-ref="HTTP_Request_Configuration" path="/accounts" method="GET" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Content-Type" value="application/json"/>
+            </http:request-builder>
+        </http:request>
+        <munit:assert-true message="The HTTP Status Code is not NULL" condition="#[messageInboundProperty('http.status').is(eq(200))]" doc:name="Assert HTTP Status Code"/>
+        <munit:assert-not-null message="The payload is NULL" doc:name="Assert Not Null Payload"/>
+    </munit:test>
+    <munit:test name="banking-test-suite-get:/accounts/{id}/transfers:banking-api-configTest" description="Test">
+        <mock:when doc:name="Mock Select All Transfers" messageProcessor=".*:.*">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Select All tranfers of specific Account']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[resultOfScript('select-transfers-response')]"/>
+        </mock:when>
+        <http:request config-ref="HTTP_Request_Configuration" path="/accounts/{id}/transfers" method="GET" doc:name="HTTP">
+            <http:request-builder>
+                <http:uri-param paramName="id" value="1"/>
+                <http:header headerName="Content-Type" value="application/json"/>
+            </http:request-builder>
+        </http:request>
+        <munit:assert-true condition="#[messageInboundProperty('http.status').is(eq(200))]" doc:name="Assert HTTP Status Code" message="The HTTP Status Code is not correct"/>
+        <munit:assert-not-null doc:name="Assert Not Null Payload" message="The Payload is NULL"/>
+    </munit:test>
+    <munit:test name="banking-test-suite-get:/accounts/{id}:banking-api-configTest" description="Test">
+        <mock:when doc:name="Mock Select Specific Account" messageProcessor=".*:.*">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Select Specific Account']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[resultOfScript('select-account-response')]"/>
+        </mock:when>
+        <http:request config-ref="HTTP_Request_Configuration" path="/accounts/{id}" method="GET" doc:name="HTTP">
+            <http:request-builder>
+                <http:uri-param paramName="id" value="1"/>
+            </http:request-builder>
+        </http:request>
+        <munit:assert-true condition="#[messageInboundProperty('http.status').is(eq(200))]" doc:name="Assert True"/>
+        <munit:assert-not-null doc:name="Assert Not Null Payload"/>
+    </munit:test>
+    <munit:test name="banking-test-suite-post:/accounts:application/json:banking-api-configTest" description="Test">
+        <mock:when doc:name="Mock" messageProcessor=".*:.*">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Insert Account']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[resultOfScript('insert-account-response')]"/>
+        </mock:when>
+        <set-payload doc:name="Set Payload" value="{
+  &quot;branch&quot;: 1,
+  &quot;cpf&quot;: &quot;123456789-12&quot;
+}"/>
+        <http:request config-ref="HTTP_Request_Configuration" path="/accounts" method="POST" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Content-Type" value="application/json"/>
+            </http:request-builder>
+        </http:request>
+        <munit:assert-true condition="#[messageInboundProperty('http.status').is(eq(201))]" doc:name="Assert HTTP Status Code" message="The HTTP Status Code "/>
+        <munit:assert-not-null doc:name="Assert Not Null Payload" message="The Payload is NULL"/>
+    </munit:test>
+    <munit:test name="library-api-tests-406-not-acceptable" description="MUnit Test">
+        <mock:throw-an exception-ref="#[new org.mule.module.apikit.exception.NotAcceptableException()]" whenCalling=".*:.*" doc:name="Throw an Exception">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Select All Accounts']"/>
+            </mock:with-attributes>
+        </mock:throw-an>
+        <http:request config-ref="HTTP_Request_Configuration" path="/accounts" method="GET" doc:name="HTTP">
+            <http:success-status-code-validator values="406"/>
+        </http:request>
+        <munit:assert-true message="The HTTP Status Code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(406))]" doc:name="Assert HTTP Status Code"/>
+    </munit:test>
+    <munit:test name="banking-test415-unsupported-media-type-exception" description="MUnit Test">
+        <mock:throw-an exception-ref="#[new org.mule.module.apikit.exception.UnsupportedMediaTypeException()]" whenCalling=".*:.*" doc:name="Throw an Exception">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['Select All Accounts']"/>
+            </mock:with-attributes>
+        </mock:throw-an>
+        <http:request config-ref="HTTP_Request_Configuration" path="accounts/" method="GET" doc:name="HTTP">
+            <http:success-status-code-validator values="415"/>
+        </http:request>
+        <munit:assert-true message="The HTTP Status Code is correct" condition="#[messageInboundProperty('http.status').is(eq(415))]" doc:name="Assert HTTP Status Code"/>
+    </munit:test>
+</mule>

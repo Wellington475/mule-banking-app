@@ -1,0 +1,27 @@
+#%RAML 1.0 Library
+usage:
+types: 
+  Transfer:
+    type: object
+    properties: 
+      id?: number
+      senderId?: number
+      branchTo?: number
+      accountTo?: string
+      ammount?: number
+  Transfers:
+    type: object
+    properties: 
+      transfers: Transfer[]
+  Account:
+    type: object
+    properties:
+      id?: number
+      branch?: number
+      accountNumber?: string
+      cpf?: string
+      balance?: number
+  Accounts:
+    type: object
+    properties: 
+      accounts: Account[]

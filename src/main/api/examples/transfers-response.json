@@ -1,0 +1,18 @@
+{
+  "transfers": [
+    {
+      "id": 1,
+      "senderId": 1,
+      "branchTo": 123,
+      "accountTo": "23857-9",
+      "ammount": 100.00
+    },
+    {
+      "id": 2,
+      "senderId": 2,
+      "branchTo": 456,
+      "accountTo": "23857-9",
+      "ammount": 100.00
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "accounts": [
+    {
+      "id": 1,
+      "branch": 123,
+      "accountNumber": "928374-8",
+      "cpf": "123456789-12",
+      "balance": 2000
+    },
+    {
+      "id": 2,
+      "branch": 456,
+      "accountNumber": "374928-3",
+      "cpf": "567891234-00",
+      "balance": 1420
+    }
+  ]
+}
